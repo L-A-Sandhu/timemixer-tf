@@ -1,4 +1,5 @@
 """RevIN: Reversible Instance Normalization for Time Series."""
+
 import tensorflow as tf
 
 
@@ -9,8 +10,14 @@ class Normalize(tf.keras.layers.Layer):
     Used as a preprocessing step in TimeMixer to handle distribution shift.
     """
 
-    def __init__(self, num_features: int, eps: float = 1e-5,
-                 affine: bool = False, non_norm: bool = False, **kwargs):
+    def __init__(
+        self,
+        num_features: int,
+        eps: float = 1e-5,
+        affine: bool = False,
+        non_norm: bool = False,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.num_features = num_features
         self.eps = eps
@@ -22,18 +29,19 @@ class Normalize(tf.keras.layers.Layer):
     def build(self, input_shape):
         if self.affine:
             self.affine_weight = self.add_weight(
-                name="affine_weight", shape=(self.num_features,),
-                initializer="ones", trainable=True)
+                name="affine_weight", shape=(self.num_features,), initializer="ones", trainable=True
+            )
             self.affine_bias = self.add_weight(
-                name="affine_bias", shape=(self.num_features,),
-                initializer="zeros", trainable=True)
+                name="affine_bias", shape=(self.num_features,), initializer="zeros", trainable=True
+            )
         super().build(input_shape)
 
     def _get_statistics(self, x):
         axes = tuple(range(1, len(x.shape) - 1))  # reduce over time dims, keep batch and feature
         self._mean = tf.stop_gradient(tf.reduce_mean(x, axis=axes, keepdims=True))
         self._stdev = tf.stop_gradient(
-            tf.sqrt(tf.math.reduce_variance(x, axis=axes, keepdims=True) + self.eps))
+            tf.sqrt(tf.math.reduce_variance(x, axis=axes, keepdims=True) + self.eps)
+        )
 
     def _normalize(self, x):
         if self.non_norm:
@@ -65,10 +73,12 @@ class Normalize(tf.keras.layers.Layer):
 
     def get_config(self):
         config = super().get_config()
-        config.update({
-            "num_features": self.num_features,
-            "eps": self.eps,
-            "affine": self.affine,
-            "non_norm": self.non_norm,
-        })
+        config.update(
+            {
+                "num_features": self.num_features,
+                "eps": self.eps,
+                "affine": self.affine,
+                "non_norm": self.non_norm,
+            }
+        )
         return config

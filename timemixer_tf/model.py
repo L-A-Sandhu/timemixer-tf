@@ -6,6 +6,7 @@ This is a complete TensorFlow 2.x reimplementation of the ICLR 2024 paper
 Supports: long-term forecasting, short-term forecasting, imputation,
           anomaly detection, and classification.
 """
+
 import tensorflow as tf
 
 from timemixer_tf.config import TimeMixerConfig
@@ -34,10 +35,7 @@ class TimeMixer(tf.keras.Model):
         self.config = config
 
         # Core PDM encoder blocks
-        self.pdm_blocks = [
-            PastDecomposableMixing(config)
-            for _ in range(config.e_layers)
-        ]
+        self.pdm_blocks = [PastDecomposableMixing(config) for _ in range(config.e_layers)]
 
         # Preprocessing decomposition
         self.preprocess = series_decomp(config.moving_avg)
@@ -45,15 +43,16 @@ class TimeMixer(tf.keras.Model):
         # Embedding
         if config.channel_independence == 1:
             self.enc_embedding = DataEmbedding_wo_pos(
-                1, config.d_model, config.embed, config.freq, config.dropout)
+                1, config.d_model, config.embed, config.freq, config.dropout
+            )
         else:
             self.enc_embedding = DataEmbedding_wo_pos(
-                config.enc_in, config.d_model, config.embed, config.freq, config.dropout)
+                config.enc_in, config.d_model, config.embed, config.freq, config.dropout
+            )
 
         # Normalization per scale
         self.normalize_layers = [
-            Normalize(config.enc_in, affine=True,
-                      non_norm=(config.use_norm == 0))
+            Normalize(config.enc_in, affine=True, non_norm=(config.use_norm == 0))
             for _ in range(config.down_sampling_layers + 1)
         ]
 
@@ -69,8 +68,7 @@ class TimeMixer(tf.keras.Model):
             else:
                 self.projection_layer = tf.keras.layers.Dense(config.c_out, use_bias=True)
                 self.out_res_layers = [
-                    tf.keras.layers.Dense(
-                        config.seq_len // (config.down_sampling_window ** i))
+                    tf.keras.layers.Dense(config.seq_len // (config.down_sampling_window**i))
                     for i in range(config.down_sampling_layers + 1)
                 ]
                 self.regression_layers = [
@@ -108,14 +106,15 @@ class TimeMixer(tf.keras.Model):
         for _ in range(self.config.down_sampling_layers):
             if method == "max":
                 x_enc_sampling = tf.nn.pool(
-                    x_enc_ori, [window], "MAX", strides=[window], padding="VALID")
+                    x_enc_ori, [window], "MAX", strides=[window], padding="VALID"
+                )
             elif method == "avg":
                 # Manual avg pool without cuDNN: reshape [B, C, T] → [B, C, T//w, w] → mean
                 B = tf.shape(x_enc_ori)[0]
                 C = tf.shape(x_enc_ori)[1]
                 T_orig = tf.shape(x_enc_ori)[2]
                 T_new = T_orig // window
-                x_trunc = x_enc_ori[:, :, :T_new * window]
+                x_trunc = x_enc_ori[:, :, : T_new * window]
                 x_reshaped = tf.reshape(x_trunc, [B, C, T_new, window])
                 x_enc_sampling = tf.reduce_mean(x_reshaped, axis=-1)
             elif method == "conv":
@@ -124,7 +123,7 @@ class TimeMixer(tf.keras.Model):
                 C = tf.shape(x_enc_ori)[1]
                 T_orig = tf.shape(x_enc_ori)[2]
                 T_new = T_orig // window
-                x_trunc = x_enc_ori[:, :, :T_new * window]
+                x_trunc = x_enc_ori[:, :, : T_new * window]
                 x_reshaped = tf.reshape(x_trunc, [B, C, T_new, window])
                 x_enc_sampling = x_reshaped[:, :, :, 0]  # take first element (strided)
             else:
@@ -175,8 +174,8 @@ class TimeMixer(tf.keras.Model):
         if self.config.channel_independence == 1:
             for i, enc_out in enumerate(enc_out_list):
                 dec_out = tf.transpose(
-                    self.predict_layers[i](tf.transpose(enc_out, [0, 2, 1])),
-                    [0, 2, 1])
+                    self.predict_layers[i](tf.transpose(enc_out, [0, 2, 1])), [0, 2, 1]
+                )
                 dec_out = self.projection_layer(dec_out)
                 c_out = self.config.c_out
                 pred_len = self.config.pred_len
@@ -186,8 +185,8 @@ class TimeMixer(tf.keras.Model):
         else:
             for i, (enc_out, out_res) in enumerate(zip(enc_out_list, x_list[1])):
                 dec_out = tf.transpose(
-                    self.predict_layers[i](tf.transpose(enc_out, [0, 2, 1])),
-                    [0, 2, 1])
+                    self.predict_layers[i](tf.transpose(enc_out, [0, 2, 1])), [0, 2, 1]
+                )
                 dec_out = self._out_projection(dec_out, i, out_res)
                 dec_out_list.append(dec_out)
         return dec_out_list
@@ -239,8 +238,7 @@ class TimeMixer(tf.keras.Model):
         means = tf.stop_gradient(tf.expand_dims(means, axis=1))
         x_enc = x_enc - means
         x_enc = tf.where(mask == 0, tf.zeros_like(x_enc), x_enc)
-        stdev = tf.sqrt(
-            tf.reduce_sum(x_enc * x_enc, axis=1) / (mask_sum + 1e-5) + 1e-5)
+        stdev = tf.sqrt(tf.reduce_sum(x_enc * x_enc, axis=1) / (mask_sum + 1e-5) + 1e-5)
         stdev = tf.stop_gradient(tf.expand_dims(stdev, axis=1))
         x_enc = x_enc / stdev
 
@@ -335,8 +333,7 @@ class TimeMixer(tf.keras.Model):
     # ------------------------------------------------------------------
     # Forward dispatch
     # ------------------------------------------------------------------
-    def call(self, x_enc, x_mark_enc=None, x_dec=None, x_mark_dec=None,
-             mask=None, training=False):
+    def call(self, x_enc, x_mark_enc=None, x_dec=None, x_mark_dec=None, mask=None, training=False):
         task = self.config.task_name
         if task in ("long_term_forecast", "short_term_forecast"):
             return self._forecast(x_enc, x_mark_enc, training=training)
@@ -359,10 +356,10 @@ class TimeMixer(tf.keras.Model):
             pred = self(x_enc, x_mark_enc, x_dec, x_mark_dec, mask, training=True)
             # Slice to prediction horizon for forecasting
             if self.config.task_name in ("long_term_forecast", "short_term_forecast"):
-                pred = pred[:, -self.config.pred_len:, :]
+                pred = pred[:, -self.config.pred_len :, :]
                 # Get targets (y is the second element in typical data setup)
                 # For now, compatibility placeholder
-                true = x_dec if x_dec is not None else x_enc[:, -self.config.pred_len:, :]
+                true = x_dec if x_dec is not None else x_enc[:, -self.config.pred_len :, :]
                 f_dim = -1  # 'M' task
                 pred = pred[..., f_dim:]
                 true = true[..., f_dim:]

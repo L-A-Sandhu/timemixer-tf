@@ -1,4 +1,5 @@
 """Series decomposition layers: moving average and DFT-based."""
+
 import tensorflow as tf
 
 
@@ -81,19 +82,25 @@ class DFT_series_decomp(tf.keras.layers.Layer):
 
         # rfft shape: [B, T//2+1, C]
         freq = tf.abs(xf)
-        mask_zero = tf.tile(tf.constant([[[0.0]]], dtype=freq.dtype),
-                            [1, 1, tf.shape(freq)[2]])
+        mask_zero = tf.tile(tf.constant([[[0.0]]], dtype=freq.dtype), [1, 1, tf.shape(freq)[2]])
         zero_row = tf.tile(mask_zero, [tf.shape(freq)[0], 1, 1])
         # zero out DC component
         freq_dc_zero = tf.tensor_scatter_nd_update(
-            freq, tf.stack([tf.range(tf.shape(freq)[0]),
-                            tf.zeros(tf.shape(freq)[0], dtype=tf.int32),
-                            tf.zeros(tf.shape(freq)[0], dtype=tf.int32)], axis=1),
-            tf.zeros(tf.shape(freq)[0]))
+            freq,
+            tf.stack(
+                [
+                    tf.range(tf.shape(freq)[0]),
+                    tf.zeros(tf.shape(freq)[0], dtype=tf.int32),
+                    tf.zeros(tf.shape(freq)[0], dtype=tf.int32),
+                ],
+                axis=1,
+            ),
+            tf.zeros(tf.shape(freq)[0]),
+        )
 
         # Find threshold: top_k smallest among non-zero frequencies
         top_k_values = tf.sort(freq_dc_zero, axis=1, direction="DESCENDING")
-        threshold = top_k_values[:, self.top_k:self.top_k + 1, :]
+        threshold = top_k_values[:, self.top_k : self.top_k + 1, :]
 
         # Zero out frequencies below threshold
         xf_filtered = tf.where(freq < threshold, tf.zeros_like(xf), xf)

@@ -3,6 +3,7 @@
 Loads a trained PyTorch TimeMixer checkpoint, transfers weights to the TF
 model, and verifies numerical equivalence at each module boundary.
 """
+
 import os
 import sys
 
@@ -48,6 +49,7 @@ def transfer_dense_weights(pt_weight, pt_bias, tf_layer):
 def build_pt_model(config):
     """Build a PyTorch TimeMixer model with the given config."""
     import argparse
+
     args = argparse.Namespace(**dataclasses.asdict(config))
     # Add missing attributes expected by the PT model
     try:
@@ -60,11 +62,12 @@ def build_pt_model(config):
 def compare_models(config_dict, input_batch, rtol=1e-4):
     """Compare PT and TF model outputs."""
     import dataclasses
+
     config = TimeMixerConfig(**config_dict)
 
     # Build PT model
     pt_args = argparse.Namespace(**dataclasses.asdict(config))
-    if not hasattr(pt_args, 'dec_in'):
+    if not hasattr(pt_args, "dec_in"):
         pt_args.dec_in = pt_args.enc_in
     pt_model = PTModel(pt_args)
     pt_model.eval()
@@ -72,10 +75,12 @@ def compare_models(config_dict, input_batch, rtol=1e-4):
     # Build TF model
     tf_model = TFTimeMixer(config)
     # Call once to build
-    x_np = input_batch['x_enc']
-    x_mark_np = input_batch.get('x_mark_enc', np.zeros((x_np.shape[0], x_np.shape[1], 4)))
-    _ = tf_model(tf.convert_to_tensor(x_np, dtype=tf.float32),
-                 tf.convert_to_tensor(x_mark_np, dtype=tf.float32))
+    x_np = input_batch["x_enc"]
+    x_mark_np = input_batch.get("x_mark_enc", np.zeros((x_np.shape[0], x_np.shape[1], 4)))
+    _ = tf_model(
+        tf.convert_to_tensor(x_np, dtype=tf.float32),
+        tf.convert_to_tensor(x_mark_np, dtype=tf.float32),
+    )
 
     # Transfer weights (this requires matching name conventions)
     # For now, just test same-initialization forward passes
@@ -88,9 +93,11 @@ def compare_models(config_dict, input_batch, rtol=1e-4):
         pt_out = pt_out.detach().cpu().numpy()
 
     # Get TF output
-    tf_out = tf_model(tf.convert_to_tensor(x_np, dtype=tf.float32),
-                      tf.convert_to_tensor(x_mark_np, dtype=tf.float32),
-                      training=False)
+    tf_out = tf_model(
+        tf.convert_to_tensor(x_np, dtype=tf.float32),
+        tf.convert_to_tensor(x_mark_np, dtype=tf.float32),
+        training=False,
+    )
     tf_out = tf_out.numpy()
 
     max_diff = np.max(np.abs(pt_out - tf_out))
@@ -109,6 +116,7 @@ def test_all_modules():
     # Test 1: Normalize
     print("\n[1/5] Testing Normalize layer...")
     from timemixer_tf.layers import Normalize
+
     norm = Normalize(num_features=7, affine=True)
     x = tf.random.normal([4, 96, 7])
     x_norm = norm(x, mode="norm")
@@ -119,6 +127,7 @@ def test_all_modules():
     # Test 2: series_decomp
     print("\n[2/5] Testing series_decomp layer...")
     from timemixer_tf.layers import series_decomp
+
     decomp = series_decomp(kernel_size=25)
     x = tf.random.normal([4, 96, 7])
     season, trend = decomp(x)
@@ -130,6 +139,7 @@ def test_all_modules():
     # Test 3: Embedding
     print("\n[3/5] Testing DataEmbedding_wo_pos...")
     from timemixer_tf.layers import DataEmbedding_wo_pos
+
     emb = DataEmbedding_wo_pos(c_in=7, d_model=16)
     x = tf.random.normal([4, 96, 7])
     out = emb(x, None)
@@ -138,15 +148,16 @@ def test_all_modules():
     # Test 4: Season/Trend Mixing
     print("\n[4/5] Testing Multi-scale mixing blocks...")
     from timemixer_tf.layers.mixing import MultiScaleSeasonMixing, MultiScaleTrendMixing
+
     season_mix = MultiScaleSeasonMixing(down_sampling_layers=3, seq_len=96, down_sampling_window=2)
     trend_mix = MultiScaleTrendMixing(down_sampling_layers=3, seq_len=96, down_sampling_window=2)
 
     # season_list: [B, C, T] at 4 scales
     season_list = [
-        tf.random.normal([4, 16, 96]),   # T=96
-        tf.random.normal([4, 16, 48]),   # T=48
-        tf.random.normal([4, 16, 24]),   # T=24
-        tf.random.normal([4, 16, 12]),   # T=12
+        tf.random.normal([4, 16, 96]),  # T=96
+        tf.random.normal([4, 16, 48]),  # T=48
+        tf.random.normal([4, 16, 24]),  # T=24
+        tf.random.normal([4, 16, 12]),  # T=12
     ]
     trend_list = [
         tf.random.normal([4, 16, 96]),

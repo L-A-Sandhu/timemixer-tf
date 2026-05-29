@@ -2,6 +2,7 @@
 
 Uses identical data preprocessing, splits, and hyperparameters as the PT scripts.
 """
+
 import os
 import sys
 
@@ -17,8 +18,9 @@ from timemixer_tf import TimeMixer, TimeMixerConfig
 # ---------------------------------------------------------------------------
 # ETT data loader — identical splits to PT Dataset_ETT_hour / Dataset_ETT_minute
 # ---------------------------------------------------------------------------
-def load_ett_data(root_path, data_path, dataset_type, seq_len, pred_len,
-                  features="M", target="OT", scale=True):
+def load_ett_data(
+    root_path, data_path, dataset_type, seq_len, pred_len, features="M", target="OT", scale=True
+):
     """Load ETT data with exact same splits as PT data_loader.py."""
     df_raw = pd.read_csv(os.path.join(root_path, data_path))
     scaler = StandardScaler()
@@ -29,11 +31,12 @@ def load_ett_data(root_path, data_path, dataset_type, seq_len, pred_len,
         border2s = [12 * 30 * 24, 12 * 30 * 24 + 4 * 30 * 24, 12 * 30 * 24 + 8 * 30 * 24]
     else:  # ETTm1, ETTm2
         # 15-min: 12 * 30 * 24 * 4
-        border1s = [0, 12 * 30 * 24 * 4 - seq_len,
-                    12 * 30 * 24 * 4 + 4 * 30 * 24 * 4 - seq_len]
-        border2s = [12 * 30 * 24 * 4,
-                    12 * 30 * 24 * 4 + 4 * 30 * 24 * 4,
-                    12 * 30 * 24 * 4 + 8 * 30 * 24 * 4]
+        border1s = [0, 12 * 30 * 24 * 4 - seq_len, 12 * 30 * 24 * 4 + 4 * 30 * 24 * 4 - seq_len]
+        border2s = [
+            12 * 30 * 24 * 4,
+            12 * 30 * 24 * 4 + 4 * 30 * 24 * 4,
+            12 * 30 * 24 * 4 + 8 * 30 * 24 * 4,
+        ]
 
     if features in ("M", "MS"):
         cols_data = df_raw.columns[1:]
@@ -42,7 +45,7 @@ def load_ett_data(root_path, data_path, dataset_type, seq_len, pred_len,
         df_data = df_raw[[target]]
 
     if scale:
-        train_data = df_data[border1s[0]:border2s[0]]
+        train_data = df_data[border1s[0] : border2s[0]]
         scaler.fit(train_data.values)
         data = scaler.transform(df_data.values)
     else:
@@ -55,12 +58,14 @@ def load_ett_data(root_path, data_path, dataset_type, seq_len, pred_len,
     def _time_features(dates, freq="h"):
         """Match PT time_features for freq='h' (4 dims) or 't' (5 dims)."""
         dti = pd.DatetimeIndex(dates)
-        feats = np.column_stack([
-            dti.month,
-            dti.day,
-            dti.weekday,
-            dti.hour,
-        ])
+        feats = np.column_stack(
+            [
+                dti.month,
+                dti.day,
+                dti.weekday,
+                dti.hour,
+            ]
+        )
         if freq == "t":
             feats = np.column_stack([feats, dti.minute // 15])
         return feats.astype(np.float32)
@@ -86,8 +91,12 @@ def load_ett_data(root_path, data_path, dataset_type, seq_len, pred_len,
         yms = np.lib.stride_tricks.sliding_window_view(ts[seq_len:], pred_len, axis=0)
         yms = np.swapaxes(yms, 1, 2).copy()
 
-        return (xs[:n].astype(np.float32), ys[:n].astype(np.float32),
-                xms[:n].astype(np.float32), yms[:n].astype(np.float32))
+        return (
+            xs[:n].astype(np.float32),
+            ys[:n].astype(np.float32),
+            xms[:n].astype(np.float32),
+            yms[:n].astype(np.float32),
+        )
 
     return _make_dataset, scaler, data.shape[1]
 
@@ -101,17 +110,24 @@ def train_one_config(model, config, train_data, val_data, test_data, epochs):
     (x_val, y_val, xm_val, ym_val) = val_data
     (x_test, y_test, xm_test, ym_test) = test_data
 
-    train_ds = tf.data.Dataset.from_tensor_slices(
-        (x_train, xm_train, y_train, ym_train)
-    ).shuffle(1024).batch(config.batch_size).prefetch(tf.data.AUTOTUNE)
+    train_ds = (
+        tf.data.Dataset.from_tensor_slices((x_train, xm_train, y_train, ym_train))
+        .shuffle(1024)
+        .batch(config.batch_size)
+        .prefetch(tf.data.AUTOTUNE)
+    )
 
-    val_ds = tf.data.Dataset.from_tensor_slices(
-        (x_val, xm_val, y_val, ym_val)
-    ).batch(config.batch_size).prefetch(tf.data.AUTOTUNE)
+    val_ds = (
+        tf.data.Dataset.from_tensor_slices((x_val, xm_val, y_val, ym_val))
+        .batch(config.batch_size)
+        .prefetch(tf.data.AUTOTUNE)
+    )
 
-    test_ds = tf.data.Dataset.from_tensor_slices(
-        (x_test, xm_test, y_test, ym_test)
-    ).batch(config.batch_size).prefetch(tf.data.AUTOTUNE)
+    test_ds = (
+        tf.data.Dataset.from_tensor_slices((x_test, xm_test, y_test, ym_test))
+        .batch(config.batch_size)
+        .prefetch(tf.data.AUTOTUNE)
+    )
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=config.learning_rate)
     loss_fn = tf.keras.losses.MeanSquaredError()
@@ -128,8 +144,8 @@ def train_one_config(model, config, train_data, val_data, test_data, epochs):
             with tf.GradientTape() as tape:
                 pred = model(batch_x, batch_xm, training=True)
                 f_dim = -1  # 'M' task
-                pred = pred[:, -config.pred_len:, f_dim:]
-                true = batch_y[:, -config.pred_len:, f_dim:]
+                pred = pred[:, -config.pred_len :, f_dim:]
+                true = batch_y[:, -config.pred_len :, f_dim:]
                 loss = loss_fn(true, pred)
             grads = tape.gradient(loss, model.trainable_variables)
             optimizer.apply_gradients(zip(grads, model.trainable_variables))
@@ -142,8 +158,8 @@ def train_one_config(model, config, train_data, val_data, test_data, epochs):
         for batch_x, batch_xm, batch_y, batch_ym in val_ds:
             pred = model(batch_x, batch_xm, training=False)
             f_dim = -1
-            pred = pred[:, -config.pred_len:, f_dim:]
-            true = batch_y[:, -config.pred_len:, f_dim:]
+            pred = pred[:, -config.pred_len :, f_dim:]
+            true = batch_y[:, -config.pred_len :, f_dim:]
             val_losses.append(loss_fn(true, pred).numpy())
         val_loss = np.mean(val_losses)
 
@@ -155,7 +171,9 @@ def train_one_config(model, config, train_data, val_data, test_data, epochs):
             patience_counter += 1
 
         if epoch % 2 == 0 or epoch == epochs - 1:
-            print(f"  Epoch {epoch+1:3d}/{epochs}  train_loss={train_loss:.6f}  val_loss={val_loss:.6f}")
+            print(
+                f"  Epoch {epoch+1:3d}/{epochs}  train_loss={train_loss:.6f}  val_loss={val_loss:.6f}"
+            )
 
         if patience_counter >= config.patience:
             print(f"  Early stopping at epoch {epoch+1}")
@@ -172,8 +190,8 @@ def train_one_config(model, config, train_data, val_data, test_data, epochs):
     for batch_x, batch_xm, batch_y, batch_ym in test_ds:
         pred = model(batch_x, batch_xm, training=False)
         f_dim = -1
-        pred = pred[:, -config.pred_len:, f_dim:]
-        true = batch_y[:, -config.pred_len:, f_dim:]
+        pred = pred[:, -config.pred_len :, f_dim:]
+        true = batch_y[:, -config.pred_len :, f_dim:]
         test_losses.append(loss_fn(true, pred).numpy())
         preds_all.append(pred.numpy())
         trues_all.append(true.numpy())
@@ -224,7 +242,17 @@ def main():
     all_tf = {}
     root = "./dataset/ETT-small/"
 
-    for dataset, data_class, enc_in, batch_size, epochs, patience, d_model, d_ff, e_layers in ETT_CONFIGS:
+    for (
+        dataset,
+        data_class,
+        enc_in,
+        batch_size,
+        epochs,
+        patience,
+        d_model,
+        d_ff,
+        e_layers,
+    ) in ETT_CONFIGS:
         print(f"\n{'='*50}")
         print(f"  {dataset}  (d_model={d_model}, batch={batch_size}, epochs={epochs})")
         print(f"{'='*50}")
@@ -233,26 +261,36 @@ def main():
             print(f"\n--- pred_len={pred_len} ---")
 
             make_data, scaler, n_feat = load_ett_data(
-                root, f"{dataset}.csv", data_class,
-                seq_len=96, pred_len=pred_len, features="M")
+                root, f"{dataset}.csv", data_class, seq_len=96, pred_len=pred_len, features="M"
+            )
 
             train_data = make_data("train")
             val_data = make_data("val")
             test_data = make_data("test")
 
-            print(f"  Train: {train_data[0].shape[0]}, Val: {val_data[0].shape[0]}, Test: {test_data[0].shape[0]}")
+            print(
+                f"  Train: {train_data[0].shape[0]}, Val: {val_data[0].shape[0]}, Test: {test_data[0].shape[0]}"
+            )
 
             config = TimeMixerConfig(
                 task_name="long_term_forecast",
-                seq_len=96, pred_len=pred_len,
-                enc_in=enc_in, c_out=enc_in,
-                d_model=d_model, d_ff=d_ff, e_layers=e_layers,
-                down_sampling_layers=3, down_sampling_window=2,
-                channel_independence=1, use_norm=1,
+                seq_len=96,
+                pred_len=pred_len,
+                enc_in=enc_in,
+                c_out=enc_in,
+                d_model=d_model,
+                d_ff=d_ff,
+                e_layers=e_layers,
+                down_sampling_layers=3,
+                down_sampling_window=2,
+                channel_independence=1,
+                use_norm=1,
                 learning_rate=0.01,
                 batch_size=batch_size,
-                train_epochs=epochs, patience=patience,
-                dropout=0.1, embed="timeF",
+                train_epochs=epochs,
+                patience=patience,
+                dropout=0.1,
+                embed="timeF",
                 freq="h" if dataset in ("ETTh1", "ETTh2") else "t",
             )
 

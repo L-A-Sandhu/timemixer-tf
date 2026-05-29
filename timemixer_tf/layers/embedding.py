@@ -1,4 +1,5 @@
 """Data embedding layers: token, temporal, time-feature, and combined embeddings."""
+
 import tensorflow as tf
 
 
@@ -33,11 +34,14 @@ class TokenEmbedding(tf.keras.layers.Layer):
         x_pad = tf.concat([x_t[:, :, -1:], x_t, x_t[:, :, :1]], axis=2)  # [B, C, T+2]
         # Extract sliding windows of size 3 along the T dimension
         # Stack shifted versions
-        windows = tf.stack([
-            x_pad[:, :, 0:-2],
-            x_pad[:, :, 1:-1],
-            x_pad[:, :, 2:],
-        ], axis=-1)  # [B, C, T, 3]
+        windows = tf.stack(
+            [
+                x_pad[:, :, 0:-2],
+                x_pad[:, :, 1:-1],
+                x_pad[:, :, 2:],
+            ],
+            axis=-1,
+        )  # [B, C, T, 3]
         B_dim = tf.shape(windows)[0]
         C_dim = tf.shape(windows)[1]
         T_dim = tf.shape(windows)[2]
@@ -80,8 +84,15 @@ class DataEmbedding_wo_pos(tf.keras.layers.Layer):
     (used for future temporal features).
     """
 
-    def __init__(self, c_in: int, d_model: int, embed_type: str = "timeF",
-                 freq: str = "h", dropout: float = 0.1, **kwargs):
+    def __init__(
+        self,
+        c_in: int,
+        d_model: int,
+        embed_type: str = "timeF",
+        freq: str = "h",
+        dropout: float = 0.1,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.c_in = c_in
         self.d_model = d_model
@@ -104,9 +115,13 @@ class DataEmbedding_wo_pos(tf.keras.layers.Layer):
 
     def get_config(self):
         config = super().get_config()
-        config.update({
-            "c_in": self.c_in, "d_model": self.d_model,
-            "embed_type": self.embed_type, "freq": self.freq,
-            "dropout": self.dropout_rate,
-        })
+        config.update(
+            {
+                "c_in": self.c_in,
+                "d_model": self.d_model,
+                "embed_type": self.embed_type,
+                "freq": self.freq,
+                "dropout": self.dropout_rate,
+            }
+        )
         return config

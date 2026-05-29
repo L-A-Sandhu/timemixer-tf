@@ -45,8 +45,11 @@ class TimeMixerConfig:
 
     @property
     def down_sampling_window_list(self) -> list[int]:
-        return [self.down_sampling_window ** i for i in range(self.down_sampling_layers + 1)]
+        return [self.down_sampling_window**i for i in range(self.down_sampling_layers + 1)]
 
     @property
     def seq_len_list(self) -> list[int]:
-        return [self.seq_len // (self.down_sampling_window ** i) for i in range(self.down_sampling_layers + 1)]
+        return [
+            self.seq_len // (self.down_sampling_window**i)
+            for i in range(self.down_sampling_layers + 1)
+        ]

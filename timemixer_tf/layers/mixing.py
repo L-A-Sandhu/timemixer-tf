@@ -1,4 +1,5 @@
 """Past Decomposable Mixing: multi-scale season and trend mixing blocks."""
+
 import tensorflow as tf
 
 from timemixer_tf.layers.decomposition import DFT_series_decomp, series_decomp
@@ -7,8 +8,9 @@ from timemixer_tf.layers.decomposition import DFT_series_decomp, series_decomp
 class MultiScaleSeasonMixing(tf.keras.layers.Layer):
     """Bottom-up mixing of seasonal patterns from fine to coarse scales."""
 
-    def __init__(self, down_sampling_layers: int, seq_len: int,
-                 down_sampling_window: int, **kwargs):
+    def __init__(
+        self, down_sampling_layers: int, seq_len: int, down_sampling_window: int, **kwargs
+    ):
         super().__init__(**kwargs)
         self.down_sampling_layers = down_sampling_layers
         self.seq_len = seq_len
@@ -17,18 +19,20 @@ class MultiScaleSeasonMixing(tf.keras.layers.Layer):
 
     def build(self, input_shape):
         for i in range(self.down_sampling_layers):
-            in_len = self.seq_len // (self.down_sampling_window ** i)
+            in_len = self.seq_len // (self.down_sampling_window**i)
             out_len = self.seq_len // (self.down_sampling_window ** (i + 1))
-            self.down_layers.append([
-                tf.keras.layers.Dense(out_len, name=f"down_linear1_{i}"),
-                tf.keras.layers.Dense(out_len, name=f"down_linear2_{i}"),
-            ])
+            self.down_layers.append(
+                [
+                    tf.keras.layers.Dense(out_len, name=f"down_linear1_{i}"),
+                    tf.keras.layers.Dense(out_len, name=f"down_linear2_{i}"),
+                ]
+            )
         super().build(input_shape)
 
     def call(self, season_list):
         # season_list: list of [B, C, T] tensors at different scales
         out_high = season_list[0]  # finest scale
-        out_low = season_list[1]   # next scale
+        out_low = season_list[1]  # next scale
         out_season_list = [tf.transpose(out_high, [0, 2, 1])]  # [B, T, C]
 
         for i in range(len(season_list) - 1):
@@ -45,19 +49,22 @@ class MultiScaleSeasonMixing(tf.keras.layers.Layer):
 
     def get_config(self):
         config = super().get_config()
-        config.update({
-            "down_sampling_layers": self.down_sampling_layers,
-            "seq_len": self.seq_len,
-            "down_sampling_window": self.down_sampling_window,
-        })
+        config.update(
+            {
+                "down_sampling_layers": self.down_sampling_layers,
+                "seq_len": self.seq_len,
+                "down_sampling_window": self.down_sampling_window,
+            }
+        )
         return config
 
 
 class MultiScaleTrendMixing(tf.keras.layers.Layer):
     """Top-down mixing of trend patterns from coarse to fine scales."""
 
-    def __init__(self, down_sampling_layers: int, seq_len: int,
-                 down_sampling_window: int, **kwargs):
+    def __init__(
+        self, down_sampling_layers: int, seq_len: int, down_sampling_window: int, **kwargs
+    ):
         super().__init__(**kwargs)
         self.down_sampling_layers = down_sampling_layers
         self.seq_len = seq_len
@@ -67,17 +74,19 @@ class MultiScaleTrendMixing(tf.keras.layers.Layer):
     def build(self, input_shape):
         for i in reversed(range(self.down_sampling_layers)):
             in_len = self.seq_len // (self.down_sampling_window ** (i + 1))
-            out_len = self.seq_len // (self.down_sampling_window ** i)
-            self.up_layers.append([
-                tf.keras.layers.Dense(out_len, name=f"up_linear1_{i}"),
-                tf.keras.layers.Dense(out_len, name=f"up_linear2_{i}"),
-            ])
+            out_len = self.seq_len // (self.down_sampling_window**i)
+            self.up_layers.append(
+                [
+                    tf.keras.layers.Dense(out_len, name=f"up_linear1_{i}"),
+                    tf.keras.layers.Dense(out_len, name=f"up_linear2_{i}"),
+                ]
+            )
         super().build(input_shape)
 
     def call(self, trend_list):
         trend_list_reverse = list(reversed(trend_list))
-        out_low = trend_list_reverse[0]      # coarsest
-        out_high = trend_list_reverse[1]     # next
+        out_low = trend_list_reverse[0]  # coarsest
+        out_high = trend_list_reverse[1]  # next
         out_trend_list = [tf.transpose(out_low, [0, 2, 1])]
 
         for i in range(len(trend_list_reverse) - 1):
@@ -95,11 +104,13 @@ class MultiScaleTrendMixing(tf.keras.layers.Layer):
 
     def get_config(self):
         config = super().get_config()
-        config.update({
-            "down_sampling_layers": self.down_sampling_layers,
-            "seq_len": self.seq_len,
-            "down_sampling_window": self.down_sampling_window,
-        })
+        config.update(
+            {
+                "down_sampling_layers": self.down_sampling_layers,
+                "seq_len": self.seq_len,
+                "down_sampling_window": self.down_sampling_window,
+            }
+        )
         return config
 
 
@@ -128,20 +139,28 @@ class PastDecomposableMixing(tf.keras.layers.Layer):
             raise ValueError(f"Unknown decomp_method: {config.decomp_method}")
 
         if config.channel_independence == 0:
-            self.cross_layer = tf.keras.Sequential([
-                tf.keras.layers.Dense(config.d_ff, activation="gelu"),
-                tf.keras.layers.Dense(config.d_model),
-            ], name="cross_layer")
+            self.cross_layer = tf.keras.Sequential(
+                [
+                    tf.keras.layers.Dense(config.d_ff, activation="gelu"),
+                    tf.keras.layers.Dense(config.d_model),
+                ],
+                name="cross_layer",
+            )
 
         self.season_mixing = MultiScaleSeasonMixing(
-            config.down_sampling_layers, config.seq_len, config.down_sampling_window)
+            config.down_sampling_layers, config.seq_len, config.down_sampling_window
+        )
         self.trend_mixing = MultiScaleTrendMixing(
-            config.down_sampling_layers, config.seq_len, config.down_sampling_window)
+            config.down_sampling_layers, config.seq_len, config.down_sampling_window
+        )
 
-        self.out_cross_layer = tf.keras.Sequential([
-            tf.keras.layers.Dense(config.d_ff, activation="gelu"),
-            tf.keras.layers.Dense(config.d_model),
-        ], name="out_cross_layer")
+        self.out_cross_layer = tf.keras.Sequential(
+            [
+                tf.keras.layers.Dense(config.d_ff, activation="gelu"),
+                tf.keras.layers.Dense(config.d_model),
+            ],
+            name="out_cross_layer",
+        )
 
     def call(self, x_list, training=False):
         # x_list: list of [B, T, d_model]
@@ -166,7 +185,8 @@ class PastDecomposableMixing(tf.keras.layers.Layer):
         # 3. Recombine
         out_list = []
         for ori, out_season, out_trend, length in zip(
-                x_list, out_season_list, out_trend_list, length_list):
+            x_list, out_season_list, out_trend_list, length_list
+        ):
             out = out_season + out_trend
             if self.channel_independence:
                 out = ori + self.out_cross_layer(out, training=training)
