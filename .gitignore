@@ -1,0 +1,16 @@
+.DS_store
+.python-version
+*.pth
+result_*.txt
+
+__pycache__/
+dataset/
+results/
+test_results/
+checkpoints/
+*.egg-info/
+dist/
+build/
+*.pyc
+BASELINE_RESULTS/
+test_results_nightly/

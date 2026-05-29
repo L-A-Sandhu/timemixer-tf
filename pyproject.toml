@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "timemixer-tf"
+version = "0.1.0"
+description = "TimeMixer: Decomposable Multiscale Mixing for Time Series Forecasting — ICLR 2024 in TensorFlow 2.x"
+readme = "README_TF.md"
+license = {text = "Apache-2.0"}
+authors = [{name = "L-A-Sandhu", email = "laeeq.aslam.100@gmail.com"}]
+keywords = [
+    "time-series", "forecasting", "deep-learning", "tensorflow",
+    "mlp", "multiscale", "timemixer", "iclr", "imputation",
+    "anomaly-detection", "classification",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Operating System :: OS Independent",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "tensorflow>=2.16.0,<3.0.0",
+    "numpy>=1.24.0,<2.0.0",
+    "pandas>=1.5.0,<4.0.0",
+    "scikit-learn>=1.2.0,<2.0.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "pytest-cov>=4.0", "black>=23.0", "ruff>=0.1.0"]
+torch = ["torch>=1.7.0"]
+all = ["timemixer-tf[dev,torch]"]
+
+[project.urls]
+Homepage = "https://github.com/L-A-Sandhu/timemixer-tf"
+Repository = "https://github.com/L-A-Sandhu/timemixer-tf"
+Issues = "https://github.com/L-A-Sandhu/timemixer-tf/issues"
+Paper = "https://openreview.net/pdf?id=7oLshfEIC2"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["timemixer_tf", "timemixer_tf.*"]
+exclude = ["tests*", "exp*", "models*", "layers*", "utils*", "scripts*", "data_provider*", "dataset*"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311", "py312"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
