@@ -4,13 +4,14 @@ Uses identical data preprocessing, splits, and hyperparameters as the PT scripts
 """
 import os
 import sys
+
 import numpy as np
 import pandas as pd
 import tensorflow as tf
 from sklearn.preprocessing import StandardScaler
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from timemixer_tf import TimeMixerConfig, TimeMixer
+from timemixer_tf import TimeMixer, TimeMixerConfig
 
 
 # ---------------------------------------------------------------------------

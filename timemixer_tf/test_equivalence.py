@@ -3,16 +3,18 @@
 Loads a trained PyTorch TimeMixer checkpoint, transfers weights to the TF
 model, and verifies numerical equivalence at each module boundary.
 """
+import os
+import sys
+
 import numpy as np
 import tensorflow as tf
 import torch
-import sys
-import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from timemixer_tf import TimeMixerConfig, TimeMixer as TFTimeMixer
 from models.TimeMixer import Model as PTModel
+from timemixer_tf import TimeMixer as TFTimeMixer
+from timemixer_tf import TimeMixerConfig
 
 
 def extract_pt_state(pt_model):

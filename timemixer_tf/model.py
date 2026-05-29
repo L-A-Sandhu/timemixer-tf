@@ -7,8 +7,14 @@ Supports: long-term forecasting, short-term forecasting, imputation,
           anomaly detection, and classification.
 """
 import tensorflow as tf
+
 from timemixer_tf.config import TimeMixerConfig
-from timemixer_tf.layers import Normalize, PastDecomposableMixing, DataEmbedding_wo_pos, series_decomp
+from timemixer_tf.layers import (
+    DataEmbedding_wo_pos,
+    Normalize,
+    PastDecomposableMixing,
+    series_decomp,
+)
 
 
 class TimeMixer(tf.keras.Model):

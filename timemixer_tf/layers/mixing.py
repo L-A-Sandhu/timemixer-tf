@@ -1,6 +1,7 @@
 """Past Decomposable Mixing: multi-scale season and trend mixing blocks."""
 import tensorflow as tf
-from timemixer_tf.layers.decomposition import series_decomp, DFT_series_decomp
+
+from timemixer_tf.layers.decomposition import DFT_series_decomp, series_decomp
 
 
 class MultiScaleSeasonMixing(tf.keras.layers.Layer):

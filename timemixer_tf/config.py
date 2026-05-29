@@ -1,5 +1,4 @@
 import dataclasses
-from typing import List, Optional
 
 
 @dataclasses.dataclass
@@ -29,7 +28,7 @@ class TimeMixerConfig:
     down_sampling_method: str = "avg"  # "avg", "max", or "conv"
     use_norm: int = 1
     use_future_temporal_feature: int = 0
-    num_class: Optional[int] = None
+    num_class: int | None = None
     use_amp: bool = False
     output_attention: bool = False
     learning_rate: float = 0.01
@@ -45,9 +44,9 @@ class TimeMixerConfig:
     inverse: bool = False
 
     @property
-    def down_sampling_window_list(self) -> List[int]:
+    def down_sampling_window_list(self) -> list[int]:
         return [self.down_sampling_window ** i for i in range(self.down_sampling_layers + 1)]
 
     @property
-    def seq_len_list(self) -> List[int]:
+    def seq_len_list(self) -> list[int]:
         return [self.seq_len // (self.down_sampling_window ** i) for i in range(self.down_sampling_layers + 1)]
